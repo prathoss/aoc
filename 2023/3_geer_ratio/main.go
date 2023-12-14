@@ -14,61 +14,35 @@ func main() {
 }
 
 func SumPartNumbers(fileName string) int {
-	usedPartNumbers := map[Coordinates]int{}
+	sum := 0
 	ReadByLine(fileName, func(previousLine, currentLine, nextLine string, currentLineNumber int) {
-		for i, r := range currentLine {
-			if !IsSymbol(r) {
+		i := 0
+		for i < len(currentLine) {
+			r := rune(currentLine[i])
+			if !IsNumeric(r) {
+				i += 1
 				continue
 			}
 
-			storeToUsedPartNumbers := func(number int, startIndex int) {
-				c := Coordinates{
-					Row:    currentLineNumber,
-					Column: startIndex,
+			num, startIndex, endIndex := GetNumberWithStartAndEndIndex([]rune(currentLine), &i)
+			contains := false
+			for _, searchLine := range []string{previousLine, currentLine, nextLine} {
+				if searchLine == "" {
+					continue
 				}
-				if _, alreadyUsed := usedPartNumbers[c]; !alreadyUsed {
-					usedPartNumbers[c] = number
-				}
-			}
-
-			handleRune := func(line []rune, index int) {
-				if IsNumeric(line[index]) {
-					number, startIndex := GetNumberWithStartIndex(line, index)
-					storeToUsedPartNumbers(number, startIndex)
+				if ContainSymbol(searchLine[max(0, startIndex-1):min(len(searchLine), endIndex+1)]) {
+					contains = true
+					break
 				}
 			}
-
-			handleLine := func(line string) {
-				runeLine := []rune(line)
-				if line != "" {
-					if i > 0 {
-						handleRune(runeLine, i-1)
-					}
-
-					handleRune(runeLine, i)
-
-					if i < len(line)-1 {
-						handleRune(runeLine, i+1)
-					}
-				}
+			if contains {
+				sum += num
 			}
-
-			handleLine(previousLine)
-			handleLine(currentLine)
-			handleLine(nextLine)
+			i += 1
 		}
 	})
 
-	partNumberSum := 0
-	for _, partNumber := range usedPartNumbers {
-		partNumberSum += partNumber
-	}
-	return partNumberSum
-}
-
-type Coordinates struct {
-	Row    int
-	Column int
+	return sum
 }
 
 func ReadByLine(fileName string, lineHandler func(previousLine, currentLine, nextLine string, currentLineNumber int)) {
@@ -126,21 +100,24 @@ func IsNumeric(r rune) bool {
 	return unicode.IsDigit(r)
 }
 
-func GetNumberWithStartIndex(line []rune, index int) (int, int) {
-	startIndex := index
-	endIndex := index
-
-	for startIndex > 0 && IsNumeric(line[startIndex-1]) {
-		startIndex -= 1
-	}
-	for endIndex < len(line)-1 && IsNumeric(line[endIndex+1]) {
-		endIndex += 1
+func GetNumberWithStartAndEndIndex(line []rune, i *int) (int, int, int) {
+	startIndex := *i
+	for *i < len(line) && IsNumeric(line[*i]) {
+		*i += 1
 	}
 
-	number, err := strconv.Atoi(string(line[startIndex : endIndex+1]))
+	number, err := strconv.Atoi(string(line[startIndex:*i]))
 	if err != nil {
 		panic(err)
 	}
+	return number, startIndex, *i
+}
 
-	return number, startIndex
+func ContainSymbol(s string) bool {
+	for _, r := range s {
+		if IsSymbol(r) {
+			return true
+		}
+	}
+	return false
 }
